@@ -34,3 +34,10 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+.idea
+Assets/Photon Unity Networking
+Assets/PhotonChatApi
+Assets/Plugins
+Assets/Photon Unity Networking.meta
+Assets/PhotonChatApi.meta
+Assets/Plugins.meta
