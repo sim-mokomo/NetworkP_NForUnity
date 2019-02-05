@@ -18,10 +18,13 @@ public class P_NGameController : Photon.MonoBehaviour
     private GameSequence _gameSequence;
     private event Action<GameSequence> OnChangeGameSequence;
 
+    [SerializeField] private GameObject _ballPrefab;
+    private BallController _ballController;
+
     public void OnJoinedRoom()
     {
         _gameSequence = GameSequence.GameStart;
-
+        
         OnChangeGameSequence += (GameSequence newGameSequence) =>
         {
             switch (newGameSequence)
@@ -37,7 +40,8 @@ public class P_NGameController : Photon.MonoBehaviour
             }
         };
 
-        SetGameSequence(newGameSequence: GameSequence.GameStart);
+        RpcSetGameSequence(intNewGameSequence: (int)GameSequence.GameStart);
+//        SetGameSequence(newGameSequence: GameSequence.GameStart);
     }
 
     /// <summary>
@@ -57,7 +61,17 @@ public class P_NGameController : Photon.MonoBehaviour
             group: 0).GetComponent<BarController>();
         _barController.Initialize();
 
-        _gameSequence = GameSequence.Gaming;
+        // 対戦者が現れた時にボールを生成する。
+        if (PhotonNetwork.isMasterClient == false)
+        {
+            _ballController = PhotonNetwork.Instantiate(
+                prefabName: _ballPrefab.name,
+                position: _ballPrefab.transform.position,
+                rotation: Quaternion.identity,
+                group: 0).GetComponent<BallController>();
+            _ballController.Initialize();
+            SetGameSequence(GameSequence.Gaming);
+        }
     }
 
     private void Update()
@@ -68,6 +82,7 @@ public class P_NGameController : Photon.MonoBehaviour
                 break;
             case GameSequence.Gaming:
                 _barController.Move();
+                _ballController.Move();
                 break;
             case GameSequence.GameEnd:
                 break;
@@ -80,6 +95,14 @@ public class P_NGameController : Photon.MonoBehaviour
     /// <param name="newGameSequence"></param>
     private void SetGameSequence(GameSequence newGameSequence)
     {
+        int intNewGameSequence = (int) newGameSequence;
+        this.photonView.RPC("RpcSetGameSequence",PhotonTargets.All,intNewGameSequence);
+    }
+
+    [PunRPC]
+    private void RpcSetGameSequence(int intNewGameSequence)
+    {
+        GameSequence newGameSequence = (GameSequence) intNewGameSequence;
         _gameSequence = newGameSequence;
         OnChangeGameSequence?.Invoke(newGameSequence);
     }
@@ -87,5 +110,6 @@ public class P_NGameController : Photon.MonoBehaviour
     public void Finalize()
     {
         _barController.Finalize();
+        _ballController.Finalize();
     }
 }
