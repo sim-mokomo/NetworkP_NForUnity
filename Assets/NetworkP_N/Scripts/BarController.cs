@@ -26,7 +26,7 @@ public class BarController : Photon.MonoBehaviour
         float moveDeltaX = 0.0f;
         moveDeltaX = Input.GetAxis("Horizontal");
         Vector3 moveDirection = new Vector3(moveDeltaX, 0.0f, 0.0f);
-        _rigidbody.velocity = moveDirection * _horizontalMoveSpeed * Time.deltaTime;
+        _rigidbody.velocity = moveDirection * _horizontalMoveSpeed;
     }
 
     public void Finalize()

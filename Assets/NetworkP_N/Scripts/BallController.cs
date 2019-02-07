@@ -15,8 +15,7 @@ public class BallController : Photon.MonoBehaviour
         private set
         {
             _moveDirection = value;
-            _rigidbody.velocity = _moveDirection * _moveSpeed * Time.deltaTime;
-            _photonTransformView.SetSynchronizedValues(speed: _rigidbody.velocity, turnSpeed: 0.0f);
+//            _photonTransformView.SetSynchronizedValues(speed: _rigidbody.velocity, turnSpeed: 0.0f);
         }
     }
 
@@ -41,10 +40,7 @@ public class BallController : Photon.MonoBehaviour
 
     public void Move()
     {
-        if (photonView.isMine == false)
-        {
-            return;
-        }
+        _rigidbody.velocity = _moveDirection * _moveSpeed;
     }
 
     public void Finalize()
@@ -53,9 +49,8 @@ public class BallController : Photon.MonoBehaviour
 
     private void OnCollisionEnter(Collision other)
     {
-        if (photonView.isMine == false)
-            return;
-        Refrect(inNormal: other.contacts[0].normal);
+        RpcReflect(inNormal:other.contacts[0].normal);
+//        Refrect(inNormal: other.contacts[0].normal);
     }
 
 
