@@ -26,8 +26,14 @@ public class P_NGameController : Photon.MonoBehaviour
     [SerializeField] private List<GoalController> _playerGoalList = new List<GoalController>(2);
     [SerializeField] private List<Text> _playerPointHudTextList;
 
+    [SerializeField] private int _winRequiredVictoryNum;
+    public event Action OnGameEnd;
+
+    [SerializeField] private ResultHudController _resultHudController;
+    
     public void OnJoinedRoom()
     {
+        OnChangeGameSequence = null;
         OnChangeGameSequence += (GameSequence newGameSequence) =>
         {
             switch (newGameSequence)
@@ -78,17 +84,37 @@ public class P_NGameController : Photon.MonoBehaviour
 
         _playerController.OnAddPoint += currentPoint =>
         {
-            _ballController.EnableCollision(enable: false);
             _ballController.Initialize();
+            
+            if (currentPoint >= _winRequiredVictoryNum)
+            {
+                OnGameEnd?.Invoke();
+            }
+            
             ApplyPlayerPointHudText(point: currentPoint, playerId: playerId);
         };
         
         // 対戦者が現れた時にボールを生成する。
         if (PhotonNetwork.isMasterClient == false)
         {
+            _ballController.SetCanMove(true);
             _ballController.Initialize();
             SetGameSequence(GameSequence.Gaming);
         }
+
+        ShowResultHud(false);
+        _resultHudController.GoToHomeButton.onClick.RemoveAllListeners();
+        _resultHudController.GoToHomeButton.onClick.AddListener(() =>
+        {
+            
+        });
+        OnGameEnd = null;
+        OnGameEnd += () =>
+        {
+            ShowResultHud(true);
+            _resultHudController.ShowGameResultHudText(winner:true);
+            SetGameSequence(newGameSequence:GameSequence.GameEnd);
+        };
     }
 
     private void Update()
@@ -128,6 +154,8 @@ public class P_NGameController : Photon.MonoBehaviour
     {
         _playerController.Finalize();
         _ballController.Finalize();
+        _ballController.SetCanMove(canMove:false);
+        
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
@@ -140,10 +168,20 @@ public class P_NGameController : Photon.MonoBehaviour
     }
 
     [PunRPC]
-    public void RpcApplyPlayerPointHudText(int point, int playerId)
+    private void RpcApplyPlayerPointHudText(int point, int playerId)
     {
         _playerPointHudTextList[playerId].text = $"Point:{point}";
     }
 
+    public void ShowResultHud(bool show)
+    {
+        this.photonView.RPC("RpcShowResultHud",PhotonTargets.All,show);
+    }
+
+    [PunRPC]
+    public void RpcShowResultHud(bool show)
+    {
+        _resultHudController.gameObject.SetActive(show);
+    }
 
 }

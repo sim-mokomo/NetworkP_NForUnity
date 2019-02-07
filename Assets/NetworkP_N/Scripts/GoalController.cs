@@ -7,8 +7,10 @@ public class GoalController : Photon.MonoBehaviour {
 
     public event Action OnGoalBall;
 
-	private void OnCollisionEnter(Collision other)
+	private void OnTriggerEnter(Collider other)
 	{
+		if (photonView.isMine == false)
+			return;
 		BallController ball = other.gameObject.GetComponent<BallController>();
 		if (ball)
 		{

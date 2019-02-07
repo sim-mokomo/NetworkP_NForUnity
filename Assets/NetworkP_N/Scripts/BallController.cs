@@ -8,6 +8,7 @@ public class BallController : Photon.MonoBehaviour
     private Vector3 _moveDirection;
     private Rigidbody _rigidbody;
     private PhotonTransformView _photonTransformView;
+    private bool _canMove;
 
     public Vector3 MoveDirection
     {
@@ -40,6 +41,8 @@ public class BallController : Photon.MonoBehaviour
 
     public void Move()
     {
+        if (_canMove == false)
+            return;
         _rigidbody.velocity = _moveDirection * _moveSpeed;
     }
 
@@ -76,9 +79,21 @@ public class BallController : Photon.MonoBehaviour
     {
         var sphereCollider = GetComponent<SphereCollider>();
         sphereCollider.enabled = enable;
+        _rigidbody.velocity = Vector3.zero;
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
+    }
+
+    public void SetCanMove(bool canMove)
+    {
+        this.photonView.RPC("RpcSetCanMove",PhotonTargets.All,canMove);
+    }
+
+    [PunRPC]
+    public void RpcSetCanMove(bool canMove)
+    {
+        _canMove = canMove;
     }
 }

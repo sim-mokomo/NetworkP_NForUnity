@@ -55,6 +55,8 @@ public class PlayerController : Photon.MonoBehaviour
 
     public void Finalize()
     {
+        PhotonNetwork.Destroy(_myBar.gameObject);
+        PhotonNetwork.Destroy(this.gameObject);
     }
 
     public void AddPoint(int deltaPoint)
