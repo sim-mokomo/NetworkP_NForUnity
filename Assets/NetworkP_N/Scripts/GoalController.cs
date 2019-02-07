@@ -22,4 +22,11 @@ public class GoalController : Photon.MonoBehaviour {
 	public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
 	{
 	}
+	
+	public void Initialize()
+	{
+		OnGoalBall = null;
+		Debug.Log("goal Initialize");
+	}
+
 }

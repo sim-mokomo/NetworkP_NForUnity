@@ -40,12 +40,15 @@ public class PlayerController : Photon.MonoBehaviour
         _playerID = playerID;
 
         _myBar.Initialize();
+        _myGoal.Initialize();
+        
         _myGoal.OnGoalBall += () =>
         {
             var otherPlayerController = FindObjectsOfType<PlayerController>()
                 .FirstOrDefault(p => p != this);
             otherPlayerController.AddPoint(deltaPoint: +1);
         };
+        
     }
 
     public void Move()
@@ -56,7 +59,6 @@ public class PlayerController : Photon.MonoBehaviour
     public void Finalize()
     {
         PhotonNetwork.Destroy(_myBar.gameObject);
-        PhotonNetwork.Destroy(this.gameObject);
     }
 
     public void AddPoint(int deltaPoint)
@@ -85,5 +87,6 @@ public class PlayerController : Photon.MonoBehaviour
     
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
+
     }
 }

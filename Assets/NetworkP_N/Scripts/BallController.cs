@@ -20,6 +20,12 @@ public class BallController : Photon.MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        _rigidbody = GetComponent<Rigidbody>();
+        _photonTransformView = GetComponent<PhotonTransformView>();
+    }
+
     public void Initialize()
     {
         this.photonView.RPC("RpcInitialize", PhotonTargets.All);
@@ -28,9 +34,9 @@ public class BallController : Photon.MonoBehaviour
     [PunRPC]
     public void RpcInitialize()
     {
+        RpcSetCanMove(canMove: true);
         RpcEnableCollision(enable: true);
-        _rigidbody = GetComponent<Rigidbody>();
-        _photonTransformView = GetComponent<PhotonTransformView>();
+        
 
         Vector3 initPos = Vector3.zero;
         initPos.z = 5.0f;
@@ -79,7 +85,6 @@ public class BallController : Photon.MonoBehaviour
     {
         var sphereCollider = GetComponent<SphereCollider>();
         sphereCollider.enabled = enable;
-        _rigidbody.velocity = Vector3.zero;
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
@@ -95,5 +100,6 @@ public class BallController : Photon.MonoBehaviour
     public void RpcSetCanMove(bool canMove)
     {
         _canMove = canMove;
+        _rigidbody.velocity = Vector3.zero;
     }
 }

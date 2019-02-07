@@ -10,16 +10,9 @@ public class BarController : Photon.MonoBehaviour
 
     public void Initialize()
     {
-        this.photonView.RPC("RpcInitialize", PhotonTargets.All);
-    }
-
-    [PunRPC]
-    public void RpcInitialize()
-    {
         _rigidbody = GetComponent<Rigidbody>();
         _photonTransformView = GetComponent<PhotonTransformView>();
     }
-
 
     public void Move()
     {

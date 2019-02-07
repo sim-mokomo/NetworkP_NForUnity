@@ -28,11 +28,21 @@ public class P_NGameController : Photon.MonoBehaviour
 
     [SerializeField] private int _winRequiredVictoryNum;
     public event Action OnGameEnd;
+    public event Action OnGameStart;
+    public event Action OnFinishFinalize;
 
     [SerializeField] private ResultHudController _resultHudController;
-    
+    private int id;
+
     public void OnJoinedRoom()
     {
+        OnFinishFinalize = null;
+        OnFinishFinalize += () =>
+        {
+            _resultHudController.gameObject.SetActive(false);
+            PhotonNetwork.LeaveRoom();
+        };
+        
         OnChangeGameSequence = null;
         OnChangeGameSequence += (GameSequence newGameSequence) =>
         {
@@ -42,14 +52,51 @@ public class P_NGameController : Photon.MonoBehaviour
                     Initialize();
                     break;
                 case GameSequence.Gaming:
+                    Transform spawnTrans = _playerBarSpawnList[id];
+                    BarController playerBar = PhotonNetwork.Instantiate(
+                        prefabName: _playerBarPrefab.name,
+                        position: spawnTrans.position,
+                        rotation: spawnTrans.rotation,
+                        group: 0).GetComponent<BarController>();
+                    playerBar.Rename(newObjName: $"Player{id}Bar");
+
+                    _playerController.Rename(newObjName: $"Player{id}Controller");
+                    _playerController.Initialize(
+                        myBar: playerBar
+                        , myGoal: _playerGoalList[id],
+                        playerId: id);
+
+                    _playerController.OnAddPoint += currentPoint =>
+                    {
+                        _ballController.EnableCollision(false);
+                        _ballController.SetCanMove(false);
+
+                        if (currentPoint >= _winRequiredVictoryNum)
+                        {
+                            OnGameEnd?.Invoke();
+                        }
+
+                        ApplyPlayerPointHudText(point: currentPoint, playerId: id);
+                    };
+                    ApplyPlayerPointHudText(point:0,playerId:_playerController.PlayerId);
+                    OnGameStart?.Invoke();
                     break;
                 case GameSequence.GameEnd:
-                    Finalize();
+                    Debug.Log("Game End");
+                    _ballController.SetCanMove(false);
                     break;
             }
         };
 
+        if (PhotonNetwork.isMasterClient == false)
+        {
+            Room room = PhotonNetwork.room;
+            var cp = room.CustomProperties;
+            cp["WaitPlayer"] = false;
+            room.SetCustomProperties(cp);
+        }
         RpcSetGameSequence((int) GameSequence.GameStart);
+
     }
 
     /// <summary>
@@ -60,6 +107,7 @@ public class P_NGameController : Photon.MonoBehaviour
         Room room = PhotonNetwork.room;
 
         int playerId = room.PlayerCount - 1;
+        id = playerId;
 
         _playerController = PhotonNetwork.Instantiate(
                 prefabName: _playerContorllerPrefab.name,
@@ -67,53 +115,22 @@ public class P_NGameController : Photon.MonoBehaviour
                 rotation: Quaternion.identity,
                 group: 0)
             .GetComponent<PlayerController>();
-        _playerController.Rename(newObjName: $"Player{playerId}Controller");
-
-        Transform spawnTrans = _playerBarSpawnList[playerId];
-        BarController playerBar = PhotonNetwork.Instantiate(
-            prefabName: _playerBarPrefab.name,
-            position: spawnTrans.position,
-            rotation: spawnTrans.rotation,
-            group: 0).GetComponent<BarController>();
-        playerBar.Rename(newObjName: $"Player{playerId}Bar");
-
-        _playerController.Initialize(
-            myBar: playerBar
-            , myGoal: _playerGoalList[playerId],
-            playerId: playerId);
-
-        _playerController.OnAddPoint += currentPoint =>
-        {
-            _ballController.Initialize();
-            
-            if (currentPoint >= _winRequiredVictoryNum)
-            {
-                OnGameEnd?.Invoke();
-            }
-            
-            ApplyPlayerPointHudText(point: currentPoint, playerId: playerId);
-        };
         
-        // 対戦者が現れた時にボールを生成する。
         if (PhotonNetwork.isMasterClient == false)
         {
-            _ballController.SetCanMove(true);
             _ballController.Initialize();
             SetGameSequence(GameSequence.Gaming);
         }
 
         ShowResultHud(false);
         _resultHudController.GoToHomeButton.onClick.RemoveAllListeners();
-        _resultHudController.GoToHomeButton.onClick.AddListener(() =>
-        {
-            
-        });
+        _resultHudController.GoToHomeButton.onClick.AddListener(Finalize);
         OnGameEnd = null;
         OnGameEnd += () =>
         {
             ShowResultHud(true);
-            _resultHudController.ShowGameResultHudText(winner:true);
-            SetGameSequence(newGameSequence:GameSequence.GameEnd);
+            _resultHudController.ShowGameResultHudText(winner: true);
+            SetGameSequence(newGameSequence: GameSequence.GameEnd);
         };
     }
 
@@ -153,9 +170,9 @@ public class P_NGameController : Photon.MonoBehaviour
     public void Finalize()
     {
         _playerController.Finalize();
+        PhotonNetwork.Destroy(_playerController.gameObject);
         _ballController.Finalize();
-        _ballController.SetCanMove(canMove:false);
-        
+        OnFinishFinalize?.Invoke();
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
@@ -175,7 +192,7 @@ public class P_NGameController : Photon.MonoBehaviour
 
     public void ShowResultHud(bool show)
     {
-        this.photonView.RPC("RpcShowResultHud",PhotonTargets.All,show);
+        this.photonView.RPC("RpcShowResultHud", PhotonTargets.All, show);
     }
 
     [PunRPC]
@@ -183,5 +200,4 @@ public class P_NGameController : Photon.MonoBehaviour
     {
         _resultHudController.gameObject.SetActive(show);
     }
-
 }
