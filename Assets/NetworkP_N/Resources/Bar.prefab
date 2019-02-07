@@ -22,10 +22,11 @@ GameObject:
   - component: {fileID: 33406618145524448}
   - component: {fileID: 23254652021782802}
   - component: {fileID: 65876670778045114}
-  - component: {fileID: 114414030231735488}
-  - component: {fileID: 114615349224842996}
-  - component: {fileID: 114344991046810526}
   - component: {fileID: 54934886752108214}
+  - component: {fileID: 114414030231735488}
+  - component: {fileID: 114344991046810526}
+  - component: {fileID: 114665516760447968}
+  - component: {fileID: 114589231272908838}
   m_Layer: 0
   m_Name: Bar
   m_TagString: Untagged
@@ -126,7 +127,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01404f4db35004872ae5095ed6835365, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _horizontalMoveSpeed: 100
+  _horizontalMoveSpeed: 140
 --- !u!114 &114414030231735488
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -145,16 +146,17 @@ MonoBehaviour:
   synchronization: 3
   onSerializeTransformOption: 3
   onSerializeRigidBodyOption: 2
-  ownershipTransfer: 0
+  ownershipTransfer: 1
   ObservedComponents:
-  - {fileID: 114615349224842996}
   - {fileID: 114344991046810526}
+  - {fileID: 114665516760447968}
+  - {fileID: 114589231272908838}
   ObservedComponentsFoldoutOpen: 1
   viewIdField: 0
   instantiationId: -1
   currentMasterID: -1
   isRuntimeInstantiated: 0
---- !u!114 &114615349224842996
+--- !u!114 &114589231272908838
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -169,9 +171,9 @@ MonoBehaviour:
     SynchronizeEnabled: 1
     TeleportEnabled: 1
     TeleportIfDistanceGreaterThan: 3
-    InterpolateOption: 3
+    InterpolateOption: 4
     InterpolateMoveTowardsSpeed: 1
-    InterpolateLerpSpeed: 1
+    InterpolateLerpSpeed: 3
     InterpolateMoveTowardsAcceleration: 2
     InterpolateMoveTowardsDeceleration: 2
     InterpolateSpeedCurve:
@@ -231,3 +233,16 @@ MonoBehaviour:
     InterpolateOption: 0
     InterpolateMoveTowardsSpeed: 1
     InterpolateLerpSpeed: 0
+--- !u!114 &114665516760447968
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1732248317025344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64179f3720bbfe947b7724caa67b7c1d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SynchronizeVelocity: 1
+  m_SynchronizeAngularVelocity: 0

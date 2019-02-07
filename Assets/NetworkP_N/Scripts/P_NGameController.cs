@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public enum GameSequence
 {
@@ -12,19 +13,21 @@ public enum GameSequence
 
 public class P_NGameController : Photon.MonoBehaviour
 {
-    [SerializeField] private GameObject _barPreafb;
-    [SerializeField] private List<GameObject> _barSpawnList;
-    private BarController _barController;
     private GameSequence _gameSequence;
     private event Action<GameSequence> OnChangeGameSequence;
 
-    [SerializeField] private GameObject _ballPrefab;
-    private BallController _ballController;
+    [SerializeField] private BallController _ballController;
+
+    [SerializeField] private GameObject _playerContorllerPrefab;
+    private PlayerController _playerController;
+
+    [SerializeField] private GameObject _playerBarPrefab;
+    [SerializeField] private List<Transform> _playerBarSpawnList;
+    [SerializeField] private List<GoalController> _playerGoalList = new List<GoalController>(2);
+    [SerializeField] private List<Text> _playerPointHudTextList;
 
     public void OnJoinedRoom()
     {
-        _gameSequence = GameSequence.GameStart;
-        
         OnChangeGameSequence += (GameSequence newGameSequence) =>
         {
             switch (newGameSequence)
@@ -40,8 +43,7 @@ public class P_NGameController : Photon.MonoBehaviour
             }
         };
 
-        RpcSetGameSequence(intNewGameSequence: (int)GameSequence.GameStart);
-//        SetGameSequence(newGameSequence: GameSequence.GameStart);
+        RpcSetGameSequence((int) GameSequence.GameStart);
     }
 
     /// <summary>
@@ -51,24 +53,39 @@ public class P_NGameController : Photon.MonoBehaviour
     {
         Room room = PhotonNetwork.room;
 
-        int playerNumber = room.PlayerCount - 1;
-        Transform barSpawnPos = _barSpawnList[playerNumber].transform;
+        int playerId = room.PlayerCount - 1;
 
-        _barController = PhotonNetwork.Instantiate(
-            prefabName: _barPreafb.name,
-            position: barSpawnPos.position,
-            rotation: barSpawnPos.rotation,
+        _playerController = PhotonNetwork.Instantiate(
+                prefabName: _playerContorllerPrefab.name,
+                position: Vector3.zero,
+                rotation: Quaternion.identity,
+                group: 0)
+            .GetComponent<PlayerController>();
+        _playerController.Rename(newObjName: $"Player{playerId}Controller");
+
+        Transform spawnTrans = _playerBarSpawnList[playerId];
+        BarController playerBar = PhotonNetwork.Instantiate(
+            prefabName: _playerBarPrefab.name,
+            position: spawnTrans.position,
+            rotation: spawnTrans.rotation,
             group: 0).GetComponent<BarController>();
-        _barController.Initialize();
+        playerBar.Rename(newObjName: $"Player{playerId}Bar");
 
+        _playerController.Initialize(
+            myBar: playerBar
+            , myGoal: _playerGoalList[playerId],
+            playerId: playerId);
+
+        _playerController.OnAddPoint += currentPoint =>
+        {
+            _ballController.EnableCollision(enable: false);
+            _ballController.Initialize();
+            ApplyPlayerPointHudText(point: currentPoint, playerId: playerId);
+        };
+        
         // 対戦者が現れた時にボールを生成する。
         if (PhotonNetwork.isMasterClient == false)
         {
-            _ballController = PhotonNetwork.Instantiate(
-                prefabName: _ballPrefab.name,
-                position: _ballPrefab.transform.position,
-                rotation: Quaternion.identity,
-                group: 0).GetComponent<BallController>();
             _ballController.Initialize();
             SetGameSequence(GameSequence.Gaming);
         }
@@ -81,7 +98,7 @@ public class P_NGameController : Photon.MonoBehaviour
             case GameSequence.GameStart:
                 break;
             case GameSequence.Gaming:
-                _barController.Move();
+                _playerController.Move();
                 _ballController.Move();
                 break;
             case GameSequence.GameEnd:
@@ -96,7 +113,7 @@ public class P_NGameController : Photon.MonoBehaviour
     private void SetGameSequence(GameSequence newGameSequence)
     {
         int intNewGameSequence = (int) newGameSequence;
-        this.photonView.RPC("RpcSetGameSequence",PhotonTargets.All,intNewGameSequence);
+        this.photonView.RPC("RpcSetGameSequence", PhotonTargets.All, intNewGameSequence);
     }
 
     [PunRPC]
@@ -109,7 +126,24 @@ public class P_NGameController : Photon.MonoBehaviour
 
     public void Finalize()
     {
-        _barController.Finalize();
+        _playerController.Finalize();
         _ballController.Finalize();
     }
+
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+    }
+
+    public void ApplyPlayerPointHudText(int point, int playerId)
+    {
+        this.photonView.RPC("RpcApplyPlayerPointHudText", PhotonTargets.All, point, playerId);
+    }
+
+    [PunRPC]
+    public void RpcApplyPlayerPointHudText(int point, int playerId)
+    {
+        _playerPointHudTextList[playerId].text = $"Point:{point}";
+    }
+
+
 }

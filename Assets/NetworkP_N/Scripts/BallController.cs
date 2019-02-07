@@ -9,6 +9,17 @@ public class BallController : Photon.MonoBehaviour
     private Rigidbody _rigidbody;
     private PhotonTransformView _photonTransformView;
 
+    public Vector3 MoveDirection
+    {
+        get { return _moveDirection; }
+        private set
+        {
+            _moveDirection = value;
+            _rigidbody.velocity = _moveDirection * _moveSpeed * Time.deltaTime;
+            _photonTransformView.SetSynchronizedValues(speed: _rigidbody.velocity, turnSpeed: 0.0f);
+        }
+    }
+
     public void Initialize()
     {
         this.photonView.RPC("RpcInitialize", PhotonTargets.All);
@@ -17,15 +28,23 @@ public class BallController : Photon.MonoBehaviour
     [PunRPC]
     public void RpcInitialize()
     {
+        RpcEnableCollision(enable: true);
         _rigidbody = GetComponent<Rigidbody>();
         _photonTransformView = GetComponent<PhotonTransformView>();
-        _moveDirection = Vector3.right + Vector3.up;
+
+        Vector3 initPos = Vector3.zero;
+        initPos.z = 5.0f;
+        transform.position = initPos;
+
+        MoveDirection = new Vector3(1.0f,1.0f,0.0f).normalized;
     }
 
     public void Move()
     {
-        _rigidbody.velocity = _moveDirection * _moveSpeed * Time.deltaTime;
-        _photonTransformView.SetSynchronizedValues(speed: _rigidbody.velocity, turnSpeed: 0.0f);
+        if (photonView.isMine == false)
+        {
+            return;
+        }
     }
 
     public void Finalize()
@@ -39,6 +58,7 @@ public class BallController : Photon.MonoBehaviour
         Refrect(inNormal: other.contacts[0].normal);
     }
 
+
     public void Refrect(Vector3 inNormal)
     {
         Debug.Log("Reflect Bar");
@@ -48,7 +68,19 @@ public class BallController : Photon.MonoBehaviour
     [PunRPC]
     private void RpcReflect(Vector3 inNormal)
     {
-        _moveDirection = Vector3.Reflect(inDirection: _moveDirection, inNormal: inNormal);
+        MoveDirection = Vector3.Reflect(inDirection: MoveDirection.normalized, inNormal: inNormal);
+    }
+
+    public void EnableCollision(bool enable)
+    {
+        this.photonView.RPC("RpcEnableCollision", PhotonTargets.All, enable);
+    }
+
+    [PunRPC]
+    private void RpcEnableCollision(bool enable)
+    {
+        var sphereCollider = GetComponent<SphereCollider>();
+        sphereCollider.enabled = enable;
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)

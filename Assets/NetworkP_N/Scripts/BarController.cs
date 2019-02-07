@@ -20,17 +20,28 @@ public class BarController : Photon.MonoBehaviour
         _photonTransformView = GetComponent<PhotonTransformView>();
     }
 
+
     public void Move()
     {
         float moveDeltaX = 0.0f;
         moveDeltaX = Input.GetAxis("Horizontal");
-
-        _rigidbody.velocity = new Vector3(moveDeltaX, 0.0f, 0.0f) * _horizontalMoveSpeed * Time.deltaTime;
-        _photonTransformView.SetSynchronizedValues(speed: _rigidbody.velocity, turnSpeed: 0.0f);
+        Vector3 moveDirection = new Vector3(moveDeltaX, 0.0f, 0.0f);
+        _rigidbody.velocity = moveDirection * _horizontalMoveSpeed * Time.deltaTime;
     }
 
     public void Finalize()
     {
+    }
+
+    public void Rename(string newObjName)
+    {
+        photonView.RPC("RpcRename", PhotonTargets.All, newObjName);
+    }
+
+    [PunRPC]
+    private void RpcRename(string newObjName)
+    {
+        gameObject.name = newObjName;
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
