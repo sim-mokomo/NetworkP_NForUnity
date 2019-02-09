@@ -7,28 +7,30 @@ public class BallController : Photon.MonoBehaviour
     [SerializeField] private float _moveSpeed;
     private Vector3 _moveDirection;
     private Rigidbody _rigidbody;
-    private PhotonTransformView _photonTransformView;
     private bool _canMove;
 
     public Vector3 MoveDirection
     {
         get { return _moveDirection; }
-        private set
-        {
-            _moveDirection = value;
-//            _photonTransformView.SetSynchronizedValues(speed: _rigidbody.velocity, turnSpeed: 0.0f);
-        }
+        private set { _moveDirection = value; }
     }
 
     private void Start()
     {
         _rigidbody = GetComponent<Rigidbody>();
-        _photonTransformView = GetComponent<PhotonTransformView>();
     }
 
-    public void Initialize()
+    public void Initialize(bool useRpc = false,
+        PhotonTargets photonTargets = PhotonTargets.All)
     {
-        this.photonView.RPC("RpcInitialize", PhotonTargets.All);
+        if (useRpc)
+        {
+            this.photonView.RPC("RpcInitialize", photonTargets);
+        }
+        else
+        {
+            RpcInitialize();
+        }
     }
 
     [PunRPC]
@@ -36,19 +38,21 @@ public class BallController : Photon.MonoBehaviour
     {
         RpcSetCanMove(canMove: true);
         RpcEnableCollision(enable: true);
-        
 
         Vector3 initPos = Vector3.zero;
         initPos.z = 5.0f;
         transform.position = initPos;
 
-        MoveDirection = new Vector3(1.0f,1.0f,0.0f).normalized;
+        MoveDirection = new Vector3(1.0f, 1.0f, 0.0f).normalized;
     }
 
     public void Move()
     {
         if (_canMove == false)
+        {
             return;
+        }
+
         _rigidbody.velocity = _moveDirection * _moveSpeed;
     }
 
@@ -58,8 +62,18 @@ public class BallController : Photon.MonoBehaviour
 
     private void OnCollisionEnter(Collision other)
     {
-        RpcReflect(inNormal:other.contacts[0].normal);
-//        Refrect(inNormal: other.contacts[0].normal);
+        BarController bar = other.gameObject.GetComponent<BarController>();
+        if (bar)
+        {
+            if (photonView.isMine)
+            {
+                this.photonView.RPC("RpcReflect", PhotonTargets.All, other.contacts[0].normal);
+            }
+        }
+        else
+        {
+            RpcReflect(inNormal: other.contacts[0].normal);
+        }
     }
 
 
@@ -70,7 +84,7 @@ public class BallController : Photon.MonoBehaviour
     }
 
     [PunRPC]
-    private void RpcReflect(Vector3 inNormal)
+    public void RpcReflect(Vector3 inNormal)
     {
         MoveDirection = Vector3.Reflect(inDirection: MoveDirection.normalized, inNormal: inNormal);
     }
@@ -93,13 +107,16 @@ public class BallController : Photon.MonoBehaviour
 
     public void SetCanMove(bool canMove)
     {
-        this.photonView.RPC("RpcSetCanMove",PhotonTargets.All,canMove);
+        this.photonView.RPC("RpcSetCanMove", PhotonTargets.All, canMove);
     }
 
     [PunRPC]
     public void RpcSetCanMove(bool canMove)
     {
         _canMove = canMove;
-        _rigidbody.velocity = Vector3.zero;
+        if (canMove == false)
+        {
+            _rigidbody.velocity = Vector3.zero;
+        }
     }
 }

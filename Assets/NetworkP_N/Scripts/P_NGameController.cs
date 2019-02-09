@@ -79,6 +79,7 @@ public class P_NGameController : Photon.MonoBehaviour
                         ApplyPlayerPointHudText(point: currentPoint, playerId: id);
                     };
                     ApplyPlayerPointHudText(point:0,playerId:_playerController.PlayerId);
+                    _ballController.Initialize(useRpc:false);
                     OnGameStart?.Invoke();
                     break;
                 case GameSequence.GameEnd:
@@ -116,9 +117,9 @@ public class P_NGameController : Photon.MonoBehaviour
                 group: 0)
             .GetComponent<PlayerController>();
         
+            
         if (PhotonNetwork.isMasterClient == false)
         {
-            _ballController.Initialize();
             SetGameSequence(GameSequence.Gaming);
         }
 

@@ -11,8 +11,9 @@ public class GoalController : Photon.MonoBehaviour {
 	{
 		if (photonView.isMine == false)
 			return;
+		
 		BallController ball = other.gameObject.GetComponent<BallController>();
-		if (ball)
+		if (ball && ball.photonView.isMine)
 		{
 			Debug.Log("Goal!");
 			OnGoalBall?.Invoke();
