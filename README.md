@@ -6,4 +6,4 @@ PUNを使用したネットワークP●N
 - Mac OS Mojave 10.14.2
 
 # 必要なパッケージ
-- PUN(Photon Unity Networking Free)
+- PUN(Photon Unity Networking Free)1.93.0
