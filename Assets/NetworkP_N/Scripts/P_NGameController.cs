@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public enum GameSequence
 {
     GameStart,
-    Gaming,
+    Battle,
     GameEnd,
 }
 
@@ -17,22 +17,21 @@ public class P_NGameController : Photon.MonoBehaviour
     private event Action<GameSequence> OnChangeGameSequence;
 
     [SerializeField] private BallController _ballController;
-
     [SerializeField] private GameObject _playerContorllerPrefab;
-    private PlayerController _playerController;
-
     [SerializeField] private GameObject _playerBarPrefab;
     [SerializeField] private List<Transform> _playerBarSpawnList;
     [SerializeField] private List<GoalController> _playerGoalList = new List<GoalController>(2);
     [SerializeField] private List<Text> _playerPointHudTextList;
-
     [SerializeField] private int _winRequiredVictoryNum;
+    [SerializeField] private ResultHudController _resultHudController;
+
     public event Action OnGameEnd;
-    public event Action OnGameStart;
+    public event Action OnBattleStart;
     public event Action OnFinishFinalize;
 
-    [SerializeField] private ResultHudController _resultHudController;
-    private int id;
+    private int _playerIndex;
+    private BarController _playerBarController;
+    private PlayerController _playerController;
 
     public void OnJoinedRoom()
     {
@@ -42,97 +41,99 @@ public class P_NGameController : Photon.MonoBehaviour
             _resultHudController.gameObject.SetActive(false);
             PhotonNetwork.LeaveRoom();
         };
-        
+
         OnChangeGameSequence = null;
         OnChangeGameSequence += (GameSequence newGameSequence) =>
         {
             switch (newGameSequence)
             {
                 case GameSequence.GameStart:
-                    Initialize();
+                    LocalInitialize();
                     break;
-                case GameSequence.Gaming:
-                    Transform spawnTrans = _playerBarSpawnList[id];
-                    BarController playerBar = PhotonNetwork.Instantiate(
-                        prefabName: _playerBarPrefab.name,
-                        position: spawnTrans.position,
-                        rotation: spawnTrans.rotation,
-                        group: 0).GetComponent<BarController>();
-                    playerBar.Rename(newObjName: $"Player{id}Bar");
+                case GameSequence.Battle:
 
-                    _playerController.Rename(newObjName: $"Player{id}Controller");
-                    _playerController.Initialize(
-                        myBar: playerBar
-                        , myGoal: _playerGoalList[id],
-                        playerId: id);
+                    // RPC通信による初期化はプレイヤーが揃ってから行う
+                    _playerBarController.RpcRename(newObjName: $"Player{_playerIndex}Bar");
+                    _playerController.RpcRename(newObjName: $"Player{_playerIndex}Controller");
+                    _playerController.RpcInitialize(
+                        myBar: _playerBarController
+                        , myGoal: _playerGoalList[_playerIndex],
+                        playerId: _playerIndex);
 
                     _playerController.OnAddPoint += currentPoint =>
                     {
-                        _ballController.EnableCollision(false);
-                        _ballController.SetCanMove(false);
+                        _ballController.RpcEnableCollision(false);
+                        _ballController.RpcSetCanMove(false);
 
                         if (currentPoint >= _winRequiredVictoryNum)
                         {
                             OnGameEnd?.Invoke();
                         }
 
-                        ApplyPlayerPointHudText(point: currentPoint, playerId: id);
+                        RpcApplyPlayerPointHudText(point: currentPoint, playerId: _playerIndex);
                     };
-                    ApplyPlayerPointHudText(point:0,playerId:_playerController.PlayerId);
-                    _ballController.Initialize(useRpc:false);
-                    OnGameStart?.Invoke();
+
+                    RpcApplyPlayerPointHudText(point: 0, playerId: _playerController.PlayerId);
+                    _ballController.LocalInitialize();
+                    OnBattleStart?.Invoke();
                     break;
                 case GameSequence.GameEnd:
                     Debug.Log("Game End");
-                    _ballController.SetCanMove(false);
+                    _ballController.RpcSetCanMove(false);
                     break;
             }
         };
 
-        if (PhotonNetwork.isMasterClient == false)
+        Room room = PhotonNetwork.room;
+        _playerIndex = room.PlayerCount - 1;
+
+        if (room.PlayerCount == room.MaxPlayers)
         {
-            Room room = PhotonNetwork.room;
             var cp = room.CustomProperties;
             cp["WaitPlayer"] = false;
             room.SetCustomProperties(cp);
         }
-        RpcSetGameSequence((int) GameSequence.GameStart);
 
+        LocalShowResultHud(false);
+        LocalSetGameSequence((int) GameSequence.GameStart);
     }
 
     /// <summary>
     /// プレイヤーが操作するバー等オブジェクトの生成を行う
     /// </summary>
-    public void Initialize()
+    public void LocalInitialize()
     {
-        Room room = PhotonNetwork.room;
-
-        int playerId = room.PlayerCount - 1;
-        id = playerId;
-
         _playerController = PhotonNetwork.Instantiate(
                 prefabName: _playerContorllerPrefab.name,
                 position: Vector3.zero,
                 rotation: Quaternion.identity,
                 group: 0)
             .GetComponent<PlayerController>();
-        
-            
-        if (PhotonNetwork.isMasterClient == false)
-        {
-            SetGameSequence(GameSequence.Gaming);
-        }
 
-        ShowResultHud(false);
+        Transform spawnTrans = _playerBarSpawnList[_playerIndex];
+        _playerBarController = PhotonNetwork.Instantiate(
+            prefabName: _playerBarPrefab.name,
+            position: spawnTrans.position,
+            rotation: spawnTrans.rotation,
+            group: 0).GetComponent<BarController>();
+
         _resultHudController.GoToHomeButton.onClick.RemoveAllListeners();
-        _resultHudController.GoToHomeButton.onClick.AddListener(Finalize);
+        _resultHudController.GoToHomeButton.onClick.AddListener(LocalFinalize);
         OnGameEnd = null;
         OnGameEnd += () =>
         {
-            ShowResultHud(true);
-            _resultHudController.ShowGameResultHudText(winner: true);
-            SetGameSequence(newGameSequence: GameSequence.GameEnd);
+            RpcShowResultHud(show: true);
+            _resultHudController.LocalShowGameResultHudText(winner: true);
+            _resultHudController.RpcShowGameResultHudText(winner: false, photonTargets: PhotonTargets.Others);
+            RpcSetGameSequence(newGameSequence: GameSequence.GameEnd);
         };
+
+        // ゲームスタート
+        Room room = PhotonNetwork.room;
+        if (room.PlayerCount == room.MaxPlayers)
+        {
+            RpcSetGameSequence(GameSequence.Battle);
+        }
     }
 
     private void Update()
@@ -141,9 +142,9 @@ public class P_NGameController : Photon.MonoBehaviour
         {
             case GameSequence.GameStart:
                 break;
-            case GameSequence.Gaming:
-                _playerController.Move();
-                _ballController.Move();
+            case GameSequence.Battle:
+                _playerController.LocalMove();
+                _ballController.LocalMove();
                 break;
             case GameSequence.GameEnd:
                 break;
@@ -154,51 +155,52 @@ public class P_NGameController : Photon.MonoBehaviour
     /// ゲームシーケンスを変更する。新しいシーケンスを返すイベントが発火する。
     /// </summary>
     /// <param name="newGameSequence"></param>
-    private void SetGameSequence(GameSequence newGameSequence)
+    private void RpcSetGameSequence(GameSequence newGameSequence, PhotonTargets photonTargets = PhotonTargets.All)
     {
         int intNewGameSequence = (int) newGameSequence;
-        this.photonView.RPC("RpcSetGameSequence", PhotonTargets.All, intNewGameSequence);
+        this.photonView.RPC("LocalSetGameSequence", photonTargets, intNewGameSequence);
     }
 
     [PunRPC]
-    private void RpcSetGameSequence(int intNewGameSequence)
+    private void LocalSetGameSequence(int intNewGameSequence)
     {
         GameSequence newGameSequence = (GameSequence) intNewGameSequence;
         _gameSequence = newGameSequence;
         OnChangeGameSequence?.Invoke(newGameSequence);
     }
 
-    public void Finalize()
+    public void LocalFinalize()
     {
-        _playerController.Finalize();
+        _playerController.LocalFinalize();
         PhotonNetwork.Destroy(_playerController.gameObject);
-        _ballController.Finalize();
+        _ballController.LocalFinalize();
         OnFinishFinalize?.Invoke();
     }
-
-    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    
+    public void RpcApplyPlayerPointHudText(int point, int playerId, PhotonTargets photonTargets = PhotonTargets.All)
     {
-    }
-
-    public void ApplyPlayerPointHudText(int point, int playerId)
-    {
-        this.photonView.RPC("RpcApplyPlayerPointHudText", PhotonTargets.All, point, playerId);
+        this.photonView.RPC("LocalApplyPlayerPointHudText", photonTargets, point, playerId);
     }
 
     [PunRPC]
-    private void RpcApplyPlayerPointHudText(int point, int playerId)
+    private void LocalApplyPlayerPointHudText(int point, int playerId)
     {
         _playerPointHudTextList[playerId].text = $"Point:{point}";
     }
 
-    public void ShowResultHud(bool show)
+    public void RpcShowResultHud(bool show, PhotonTargets photonTargets = PhotonTargets.All)
     {
-        this.photonView.RPC("RpcShowResultHud", PhotonTargets.All, show);
+        this.photonView.RPC("LocalShowResultHud", photonTargets, show);
     }
 
     [PunRPC]
-    public void RpcShowResultHud(bool show)
+    public void LocalShowResultHud(bool show)
     {
         _resultHudController.gameObject.SetActive(show);
     }
+    
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+    }
+
 }

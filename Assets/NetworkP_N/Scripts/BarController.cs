@@ -6,15 +6,13 @@ public class BarController : Photon.MonoBehaviour
 {
     private Rigidbody _rigidbody;
     [SerializeField] private float _horizontalMoveSpeed;
-    private PhotonTransformView _photonTransformView;
 
-    public void Initialize()
+    public void LocalInitialize()
     {
         _rigidbody = GetComponent<Rigidbody>();
-        _photonTransformView = GetComponent<PhotonTransformView>();
     }
 
-    public void Move()
+    public void LocalMove()
     {
         float moveDeltaX = 0.0f;
         moveDeltaX = Input.GetAxis("Horizontal");
@@ -22,17 +20,17 @@ public class BarController : Photon.MonoBehaviour
         _rigidbody.velocity = moveDirection * _horizontalMoveSpeed;
     }
 
-    public void Finalize()
+    public void LocalFinalize()
     {
     }
 
-    public void Rename(string newObjName)
+    public void RpcRename(string newObjName,PhotonTargets photonTargets=PhotonTargets.All)
     {
-        photonView.RPC("RpcRename", PhotonTargets.All, newObjName);
+        photonView.RPC("LocalRename", photonTargets, newObjName);
     }
 
     [PunRPC]
-    private void RpcRename(string newObjName)
+    private void LocalRename(string newObjName)
     {
         gameObject.name = newObjName;
     }

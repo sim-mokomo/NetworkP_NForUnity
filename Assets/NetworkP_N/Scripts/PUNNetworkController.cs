@@ -34,7 +34,7 @@ public class PUNNetworkController : Photon.MonoBehaviour
                 JoinGame(_currentRoomInfos);
             }
         });
-        _pNGameController.OnGameStart += () => { _matchingLoadHudController.gameObject.SetActive(false); };
+        _pNGameController.OnBattleStart += () => { _matchingLoadHudController.gameObject.SetActive(false); };
     }
 
     // 1.ロビーに入室した時に全Roomの状況を検索する

@@ -14,14 +14,13 @@ public class ResultHudController : Photon.MonoBehaviour
 	/// ゲームのリザルトUIを表示。勝者が実行する。
 	/// </summary>
 	/// <param name="winner"></param>
-	public void ShowGameResultHudText(bool winner)
+	public void RpcShowGameResultHudText(bool winner,PhotonTargets photonTargets = PhotonTargets.Others)
 	{
-		RpcShowGameResultHudText(winner: winner);
-		this.photonView.RPC("RpcShowGameResultHudText",PhotonTargets.Others,!winner);
+		this.photonView.RPC("LocalShowGameResultHudText",photonTargets,winner);
 	}
 
 	[PunRPC]
-	private void RpcShowGameResultHudText(bool winner)
+	public void LocalShowGameResultHudText(bool winner)
 	{
 		string resultText = (winner ? "勝ち" : "負け");
 		_gameResultHudText.text = $"あなたの{resultText}です！";

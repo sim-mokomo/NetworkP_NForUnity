@@ -14,7 +14,7 @@ public class PlayerController : Photon.MonoBehaviour
     
     public event Action<int> OnAddPoint;
 
-    public void Initialize(BarController myBar, GoalController myGoal,int playerId)
+    public void RpcInitialize(BarController myBar, GoalController myGoal,int playerId,PhotonTargets photonTargets = PhotonTargets.All)
     {
         int ballViewID = myBar.photonView.viewID;
         int goalViewID = myGoal.photonView.viewID;
@@ -24,11 +24,11 @@ public class PlayerController : Photon.MonoBehaviour
         sendDatas.Add(goalViewID);
         sendDatas.Add(playerId);
 
-        photonView.RPC("RpcInitialize", PhotonTargets.All, sendDatas.ToArray());
+        photonView.RPC("LocalInitialize", photonTargets, sendDatas.ToArray());
     }
 
     [PunRPC]
-    private void RpcInitialize(int[] initializeData)
+    private void LocalInitialize(int[] initializeData)
     {
         int barViewID = initializeData[0];
         int goalViewID = initializeData[1];
@@ -39,48 +39,48 @@ public class PlayerController : Photon.MonoBehaviour
         _point = 0;
         _playerID = playerID;
 
-        _myBar.Initialize();
-        _myGoal.Initialize();
+        _myBar.LocalInitialize();
+        _myGoal.LocalInitialize();
         
         _myGoal.OnGoalBall += () =>
         {
             var otherPlayerController = FindObjectsOfType<PlayerController>()
                 .FirstOrDefault(p => p != this);
-            otherPlayerController.AddPoint(deltaPoint: +1);
+            otherPlayerController.RpcAddPoint(deltaPoint: +1);
         };
         
     }
 
-    public void Move()
+    public void LocalMove()
     {
-        _myBar.Move();
+        _myBar.LocalMove();
     }
 
-    public void Finalize()
+    public void LocalFinalize()
     {
         PhotonNetwork.Destroy(_myBar.gameObject);
     }
 
-    public void AddPoint(int deltaPoint)
+    public void RpcAddPoint(int deltaPoint,PhotonTargets photonTargets = PhotonTargets.All)
     {
         Debug.Log("Add Point !");
-        this.photonView.RPC("RpcAddPoint",PhotonTargets.All,deltaPoint);
+        this.photonView.RPC("LocalAddPoint",photonTargets,deltaPoint);
     }
 
     [PunRPC]
-    private void RpcAddPoint(int deltaPoint)
+    private void LocalAddPoint(int deltaPoint)
     {
         _point += deltaPoint;
         OnAddPoint?.Invoke(_point);
     }
 
-    public void Rename(string newObjName)
+    public void RpcRename(string newObjName,PhotonTargets photonTargets = PhotonTargets.All)
     {
-        photonView.RPC("RpcRename",PhotonTargets.All,newObjName);
+        photonView.RPC("LocalRename",photonTargets,newObjName);
     }
 
     [PunRPC]
-    private void RpcRename(string newObjName)
+    private void LocalRename(string newObjName)
     {
         gameObject.name = newObjName;
     }

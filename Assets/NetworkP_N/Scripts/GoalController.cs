@@ -24,7 +24,7 @@ public class GoalController : Photon.MonoBehaviour {
 	{
 	}
 	
-	public void Initialize()
+	public void LocalInitialize()
 	{
 		OnGoalBall = null;
 		Debug.Log("goal Initialize");

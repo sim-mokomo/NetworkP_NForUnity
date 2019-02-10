@@ -20,24 +20,16 @@ public class BallController : Photon.MonoBehaviour
         _rigidbody = GetComponent<Rigidbody>();
     }
 
-    public void Initialize(bool useRpc = false,
-        PhotonTargets photonTargets = PhotonTargets.All)
+    public void RpcInitialize(PhotonTargets photonTargets = PhotonTargets.All)
     {
-        if (useRpc)
-        {
-            this.photonView.RPC("RpcInitialize", photonTargets);
-        }
-        else
-        {
-            RpcInitialize();
-        }
+        this.photonView.RPC("LocalInitialize", photonTargets);
     }
 
     [PunRPC]
-    public void RpcInitialize()
+    public void LocalInitialize()
     {
-        RpcSetCanMove(canMove: true);
-        RpcEnableCollision(enable: true);
+        LocalSetCanMove(canMove: true);
+        LocalEnableCollision(enable: true);
 
         Vector3 initPos = Vector3.zero;
         initPos.z = 5.0f;
@@ -46,7 +38,7 @@ public class BallController : Photon.MonoBehaviour
         MoveDirection = new Vector3(1.0f, 1.0f, 0.0f).normalized;
     }
 
-    public void Move()
+    public void LocalMove()
     {
         if (_canMove == false)
         {
@@ -56,7 +48,7 @@ public class BallController : Photon.MonoBehaviour
         _rigidbody.velocity = _moveDirection * _moveSpeed;
     }
 
-    public void Finalize()
+    public void LocalFinalize()
     {
     }
 
@@ -67,56 +59,55 @@ public class BallController : Photon.MonoBehaviour
         {
             if (photonView.isMine)
             {
-                this.photonView.RPC("RpcReflect", PhotonTargets.All, other.contacts[0].normal);
+                RpcReflect(other.contacts[0].normal);
             }
         }
         else
         {
-            RpcReflect(inNormal: other.contacts[0].normal);
+            LocalReflect(inNormal: other.contacts[0].normal);
         }
     }
 
-
-    public void Refrect(Vector3 inNormal)
+    public void RpcReflect(Vector3 inNormal, PhotonTargets photonTargets = PhotonTargets.All)
     {
         Debug.Log("Reflect Bar");
-        this.photonView.RPC("RpcReflect", PhotonTargets.All, inNormal);
+        this.photonView.RPC("LocalReflect", photonTargets, inNormal);
     }
 
     [PunRPC]
-    public void RpcReflect(Vector3 inNormal)
+    public void LocalReflect(Vector3 inNormal)
     {
         MoveDirection = Vector3.Reflect(inDirection: MoveDirection.normalized, inNormal: inNormal);
     }
 
-    public void EnableCollision(bool enable)
+    public void RpcEnableCollision(bool enable, PhotonTargets photonTargets = PhotonTargets.All)
     {
-        this.photonView.RPC("RpcEnableCollision", PhotonTargets.All, enable);
+        this.photonView.RPC("LocalEnableCollision", photonTargets, enable);
     }
 
     [PunRPC]
-    private void RpcEnableCollision(bool enable)
+    private void LocalEnableCollision(bool enable)
     {
         var sphereCollider = GetComponent<SphereCollider>();
         sphereCollider.enabled = enable;
     }
 
-    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    public void RpcSetCanMove(bool canMove, PhotonTargets photonTargets = PhotonTargets.All)
     {
-    }
-
-    public void SetCanMove(bool canMove)
-    {
-        this.photonView.RPC("RpcSetCanMove", PhotonTargets.All, canMove);
+        this.photonView.RPC("LocalSetCanMove", photonTargets, canMove);
     }
 
     [PunRPC]
-    public void RpcSetCanMove(bool canMove)
+    public void LocalSetCanMove(bool canMove)
     {
         _canMove = canMove;
         if (canMove == false)
         {
             _rigidbody.velocity = Vector3.zero;
         }
+    }
+
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
     }
 }
